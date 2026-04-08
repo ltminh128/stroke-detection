@@ -90,12 +90,15 @@ def train(csv_path):
     print(f"  ROC-AUC: {roc_auc_score(y_test, y_prob):.3f}")
     print("="*50)
 
-    # Feature importance (Random Forest only)
-    if best_name == "Random Forest":
-        importances = pd.Series(rf.feature_importances_, index=feature_cols)
-        importances = importances.sort_values(ascending=False).head(10)
-        print("\nTop 10 most important features:")
-        print(importances.round(3).to_string())
+    # Always show Random Forest feature importance regardless of best model
+    importances = pd.Series(rf.feature_importances_, index=feature_cols)
+    importances = importances.sort_values(ascending=False).head(10)
+    print("\nTop 10 most important features (Random Forest):")
+    print(importances.round(3).to_string())
+
+    print(f"\nBest model: {best_name}")
+    print(f"Random Forest CV Recall: {rf_scores.mean():.3f}")
+    print(f"MLP CV Recall:           {mlp_scores.mean():.3f}")
 
     # Plots
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
