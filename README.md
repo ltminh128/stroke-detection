@@ -18,8 +18,11 @@ Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asym
 
 ## How to run
 pip install mediapipe opencv-python pandas scikit-learn joblib
+
 python extract_from_images.py --data_dir ./data --output landmarks.csv
+
 python train_model.py --data landmarks_face_only.csv
+
 python webcam_demo.py
 
 ## Limitations
