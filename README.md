@@ -1,14 +1,9 @@
-# Stroke Detection using Computer Vision
+# Stroke Detection
 
 Detects facial drooping, a key sign of stroke, using a webcam and machine learning.
 
 ## How it works
 Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asymmetry, brow asymmetry) and a Random Forest classifier to predict stroke risk in real time.
-
-## Results
-- Accuracy: 88%
-- ROC-AUC: 0.937
-- Palsy Recall: 84%
 
 ## Based on the FAST method
 - Face drooping -> detected by facial asymmetry features
@@ -24,6 +19,20 @@ python extract_from_images.py --data_dir ./data --output landmarks.csv
 python train_model.py --data landmarks_face_only.csv
 
 python webcam_demo.py
+
+## Results
+- Accuracy: 88%
+- ROC-AUC: 0.937
+- Palsy Recall: 84%
+- Random forest and 
+
+## Model selection
+Random Forest outperformed MLP on this dataset because:
+- Only ~1900 samples, too small for MLP to fully benefit
+- Features are already meaningful (asymmetry scores, droop measurements)
+- Structured tabular data naturally favours tree-based models
+
+> On larger datasets with raw image pixels, neural networks would likely dominate.
 
 ## Limitations
 - Trained on facial palsy data, not direct stroke data
