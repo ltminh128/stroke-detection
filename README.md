@@ -10,14 +10,16 @@ Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asym
 - Arm weakness -> pose landmarks
 - Time to call -> model triggers alert above 70% risk
 
+## Tuning
+- MLP Hyperparameter tuning
+- CNN (data leakage bug, probably requiring matched subject data)
 ## Results
 - Accuracy: 94%
 - ROC-AUC: 0.965
-- Palsy Recall: 84%
+- Palsy Recall: 88%
 
 ## Model selection
 - MLP outperformed on a dataset of ~20,000 facial images
-- CNN has a data leakage bug, probably requiring matched subject data
 
 ## Limitations
 - Trained on facial palsy data, not direct stroke data
@@ -27,7 +29,6 @@ Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asym
 ## To-dos:
 - Find specific data for CNN (apply for MEEI datasets)
 - Tuning ideas:
-    + Hyperparameter tuning for RF (low priority)
     + Feature selection
     + Add more facial landmarks
   
