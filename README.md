@@ -1,6 +1,6 @@
 # Stroke Detection
 
-Detects facial drooping, a key sign of stroke, using a webcam and machine learning.
+Detects facial drooping, a key sign of stroke, using a webcam and ML/DL.
 
 ## How it works
 Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asymmetry, brow asymmetry) and a Random Forest classifier to predict stroke risk in real time.
