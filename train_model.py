@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -63,13 +64,30 @@ def train(csv_path):
 
     # Model 2: MLP Neural Network 
     print("\n[2/2] Training MLP Neural Network...")
-    mlp = MLPClassifier(
-        hidden_layer_sizes=(64, 32),
+    print("\n[2/2] Tuning MLP Neural Network...")
+    mlp_params = {
+        'hidden_layer_sizes': [(64, 32), (128, 64), (128, 64, 32), (256, 128, 64)],
+        'activation':         ['relu', 'tanh'],
+        'alpha':              [0.0001, 0.001, 0.01],
+        'learning_rate':      ['constant', 'adaptive'],
+    }
+    mlp_base = MLPClassifier(
         max_iter=500,
         random_state=42,
         early_stopping=True,
         validation_fraction=0.1
     )
+    mlp_grid = GridSearchCV(
+        mlp_base, mlp_params,
+        cv=5, scoring='recall',
+        n_jobs=-1, verbose=1
+    )
+    mlp_grid.fit(X_train, y_train)
+    mlp = mlp_grid.best_estimator_
+    mlp_scores = cross_val_score(mlp, X_train, y_train, cv=5, scoring='recall')
+
+    print(f"      Best params : {mlp_grid.best_params_}")
+    print(f"      CV Recall   : {mlp_scores.mean():.3f} ± {mlp_scores.std():.3f}")
     mlp.fit(X_train, y_train)
     mlp_scores = cross_val_score(mlp, X_train, y_train, cv=5, scoring="recall")
     print(f"      CV Recall: {mlp_scores.mean():.3f} ± {mlp_scores.std():.3f}")
