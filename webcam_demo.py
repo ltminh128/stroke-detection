@@ -5,16 +5,25 @@ Runs your trained model on a live webcam feed.
 Shows facial landmarks, asymmetry scores, and stroke risk alert.
 """
 
+import time
+
 import cv2
-import mediapipe as mp
 import numpy as np
 import joblib
+from mediapipe.tasks.python import vision
+
+from face_features import (
+    create_face_landmarker,
+    to_mp_image,
+    facial_feature_vector,
+    FACE_FEATURE_NAMES,
+)
 
 # ── Load model & scaler ───────────────────────────────────────────────────────
 model  = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 
-N_FEATURES = 10  # must match extract_features() below
+N_FEATURES = len(FACE_FEATURE_NAMES)
 
 if getattr(scaler, "n_features_in_", N_FEATURES) != N_FEATURES:
     raise SystemExit(
@@ -24,69 +33,6 @@ if getattr(scaler, "n_features_in_", N_FEATURES) != N_FEATURES:
         f"train_model.py --data), not the raw landmarks.csv with pose columns."
     )
 
-# ── MediaPipe setup ───────────────────────────────────────────────────────────
-mp_face_mesh = mp.solutions.face_mesh
-mp_drawing   = mp.solutions.drawing_utils
-
-FACE_LANDMARKS = {
-    "mouth_left":       61,
-    "mouth_right":      291,
-    "mouth_top":        13,
-    "mouth_bottom":     14,
-    "left_eye_outer":   33,
-    "left_eye_inner":   133,
-    "right_eye_inner":  362,
-    "right_eye_outer":  263,
-    "left_brow_outer":  70,
-    "left_brow_inner":  107,
-    "right_brow_inner": 336,
-    "right_brow_outer": 300,
-    "nose_tip":         4,
-    "jaw_left":         172,
-    "jaw_right":        397,
-    "chin":             152,
-}
-
-# ── Feature extraction (face only — matches landmarks_face_only.csv) ──────────
-def extract_features(face_landmarks, img_w, img_h):
-    def get_pt(idx):
-        lm = face_landmarks.landmark[idx]
-        return np.array([lm.x * img_w, lm.y * img_h])
-
-    pts = {name: get_pt(idx) for name, idx in FACE_LANDMARKS.items()}
-    f = {}
-
-    mouth_center_x = (pts["mouth_left"][0] + pts["mouth_right"][0]) / 2
-    f["mouth_offset_x"]        = mouth_center_x - pts["nose_tip"][0]
-    left_drop  = pts["mouth_left"][1]  - pts["nose_tip"][1]
-    right_drop = pts["mouth_right"][1] - pts["nose_tip"][1]
-    f["mouth_droop_asymmetry"] = abs(left_drop - right_drop)
-
-    left_eye_h  = abs(pts["left_eye_inner"][1]  - pts["left_eye_outer"][1])
-    right_eye_h = abs(pts["right_eye_inner"][1] - pts["right_eye_outer"][1])
-    f["eye_height_asymmetry"]  = abs(left_eye_h - right_eye_h)
-
-    left_brow_y  = (pts["left_brow_outer"][1]  + pts["left_brow_inner"][1])  / 2
-    right_brow_y = (pts["right_brow_inner"][1] + pts["right_brow_outer"][1]) / 2
-    f["brow_height_asymmetry"] = abs(left_brow_y - right_brow_y)
-
-    f["jaw_tilt"] = pts["jaw_left"][1] - pts["jaw_right"][1]
-
-    f["face_symmetry_score"] = (
-        f["mouth_droop_asymmetry"] * 0.4 +
-        f["eye_height_asymmetry"]  * 0.3 +
-        f["brow_height_asymmetry"] * 0.2 +
-        abs(f["jaw_tilt"])          * 0.1
-    )
-
-    mw = abs(pts["mouth_right"][0] - pts["mouth_left"][0]) + 1e-6
-    f["mouth_width"]         = mw
-    f["mouth_droop_norm"]    = f["mouth_droop_asymmetry"] / mw
-    f["eye_asymmetry_norm"]  = f["eye_height_asymmetry"]  / mw
-    f["brow_asymmetry_norm"] = f["brow_height_asymmetry"] / mw
-
-    return np.array(list(f.values())).reshape(1, -1)
-
 
 # ── Drawing helpers ───────────────────────────────────────────────────────────
 def draw_alert(frame, prob):
@@ -95,7 +41,7 @@ def draw_alert(frame, prob):
     if prob > 0.7:
         # Red flashing border
         cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 255), 20)
-        cv2.putText(frame, "⚠ STROKE RISK DETECTED", (w//2 - 280, 60),
+        cv2.putText(frame, "STROKE RISK DETECTED", (w//2 - 280, 60),
                     cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 0, 255), 3)
         cv2.putText(frame, "CALL EMERGENCY SERVICES", (w//2 - 240, 100),
                     cv2.FONT_HERSHEY_DUPLEX, 1.0, (0, 0, 255), 2)
@@ -127,11 +73,12 @@ def draw_hud(frame, prob, features):
 
     # Feature readout
     if features is not None:
+        idx = {name: i for i, name in enumerate(FACE_FEATURE_NAMES)}
         lines = [
-            f"Mouth droop : {features[0,1]:.1f}px",
-            f"Eye asymm   : {features[0,2]:.1f}px",
-            f"Brow asymm  : {features[0,3]:.1f}px",
-            f"Symmetry    : {features[0,4]:.1f}",
+            f"Mouth droop : {features[0, idx['mouth_droop_asymmetry']]:.1f}px",
+            f"Eye asymm   : {features[0, idx['eye_height_asymmetry']]:.1f}px",
+            f"Brow asymm  : {features[0, idx['brow_height_asymmetry']]:.1f}px",
+            f"Symmetry    : {features[0, idx['face_symmetry_score']]:.1f}",
         ]
         for i, line in enumerate(lines):
             cv2.putText(frame, line, (w - 280, 80 + i * 24),
@@ -156,12 +103,10 @@ def run():
     prob_history = []
     SMOOTH_N = 8
 
-    with mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5) as face_mesh:
+    landmarker = create_face_landmarker(video_mode=True, min_confidence=0.5)
+    start = time.monotonic()
 
+    try:
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -169,33 +114,31 @@ def run():
 
             frame = cv2.flip(frame, 1)  # mirror effect
             img_h, img_w = frame.shape[:2]
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = face_mesh.process(rgb)
+            mp_img = to_mp_image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+            timestamp_ms = int((time.monotonic() - start) * 1000)
+            result = landmarker.detect_for_video(mp_img, timestamp_ms)
 
             features = None
             prob = prob_history[-1] if prob_history else 0.0
 
-            if results.multi_face_landmarks:
-                face_lm = results.multi_face_landmarks[0]
+            if result.face_landmarks:
+                face_lm = result.face_landmarks[0]
 
-                # Draw face mesh
-                mp_drawing.draw_landmarks(
+                vision.drawing_utils.draw_landmarks(
                     frame, face_lm,
-                    mp_face_mesh.FACEMESH_CONTOURS,
+                    vision.FaceLandmarksConnections.FACE_LANDMARKS_CONTOURS,
                     landmark_drawing_spec=None,
-                    connection_drawing_spec=mp_drawing.DrawingSpec(
+                    connection_drawing_spec=vision.drawing_utils.DrawingSpec(
                         color=(0, 200, 100), thickness=1, circle_radius=1))
 
-                # Extract & predict
-                features = extract_features(face_lm, img_w, img_h)
-                features_scaled = scaler.transform(features)
-                prob_raw = model.predict_proba(features_scaled)[0][1]
+                features = facial_feature_vector(face_lm, img_w, img_h)
+                prob_raw = model.predict_proba(scaler.transform(features))[0][1]
 
-                # Smooth over last N frames
                 prob_history.append(prob_raw)
                 if len(prob_history) > SMOOTH_N:
                     prob_history.pop(0)
-                prob = np.mean(prob_history)
+                prob = float(np.mean(prob_history))
 
             else:
                 cv2.putText(frame, "No face detected", (20, 40),
@@ -208,9 +151,10 @@ def run():
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
-    cap.release()
-    cv2.destroyAllWindows()
+    finally:
+        landmarker.close()
+        cap.release()
+        cv2.destroyAllWindows()
     print("[INFO] Demo closed.")
 
 

@@ -2,3 +2,11 @@ __pycache__/
 *.pyc
 *.pkl
 *.pth
+
+# Downloaded MediaPipe task models
+models/
+*.task
+
+# Datasets and extracted features
+data/
+*.csv
