@@ -12,7 +12,10 @@ Uses MediaPipe to extract 18 facial landmark features (mouth asymmetry, eye asym
 
 ## Tuning
 - MLP Hyperparameter tuning
-- CNN (data leakage bug, probably requiring matched subject data)
+- CNN fine-tuning (ResNet-50), with a person-ID-based train/val split to avoid
+  the same subject appearing in both sets — relies on filenames encoding
+  subject IDs as a leading number (e.g. `123_01.jpg`); verify this holds for
+  your dataset before trusting the split
 ## Results
 - Accuracy: 94%
 - ROC-AUC: 0.965

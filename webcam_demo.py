@@ -14,6 +14,16 @@ import joblib
 model  = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 
+N_FEATURES = 10  # must match extract_features() below
+
+if getattr(scaler, "n_features_in_", N_FEATURES) != N_FEATURES:
+    raise SystemExit(
+        f"[ERROR] model.pkl/scaler.pkl expect {scaler.n_features_in_} features, "
+        f"but this demo only extracts {N_FEATURES} face-only features.\n"
+        f"         Train on landmarks_face_only.csv (see fix_data.py / "
+        f"train_model.py --data), not the raw landmarks.csv with pose columns."
+    )
+
 # ── MediaPipe setup ───────────────────────────────────────────────────────────
 mp_face_mesh = mp.solutions.face_mesh
 mp_drawing   = mp.solutions.drawing_utils

@@ -62,8 +62,7 @@ def train(csv_path):
     rf_scores = cross_val_score(rf, X_train, y_train, cv=5, scoring="recall")
     print(f"      CV Recall: {rf_scores.mean():.3f} ± {rf_scores.std():.3f}")
 
-    # Model 2: MLP Neural Network 
-    print("\n[2/2] Training MLP Neural Network...")
+    # Model 2: MLP Neural Network
     print("\n[2/2] Tuning MLP Neural Network...")
     mlp_params = {
         'hidden_layer_sizes': [(64, 32), (128, 64), (128, 64, 32), (256, 128, 64)],
@@ -88,9 +87,6 @@ def train(csv_path):
 
     print(f"      Best params : {mlp_grid.best_params_}")
     print(f"      CV Recall   : {mlp_scores.mean():.3f} ± {mlp_scores.std():.3f}")
-    mlp.fit(X_train, y_train)
-    mlp_scores = cross_val_score(mlp, X_train, y_train, cv=5, scoring="recall")
-    print(f"      CV Recall: {mlp_scores.mean():.3f} ± {mlp_scores.std():.3f}")
 
     # Pick best model
     best_name  = "Random Forest" if rf_scores.mean() >= mlp_scores.mean() else "MLP"
@@ -151,6 +147,9 @@ def train(csv_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train stroke detection classifier")
-    parser.add_argument("--data", default="landmarks.csv", help="Path to landmarks CSV")
+    parser.add_argument("--data", default="landmarks_face_only.csv",
+                        help="Path to landmarks CSV (face-only features, matching "
+                             "webcam_demo.py's inputs — run fix_data.py on "
+                             "landmarks.csv first if you haven't already)")
     args = parser.parse_args()
     train(args.data)
