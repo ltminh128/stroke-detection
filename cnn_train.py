@@ -220,7 +220,6 @@ def train(data_dir):
         history["val_acc"].append(val_acc)
         history["val_auc"].append(val_auc)
 
-        print(f"  Train Loss: {train_loss:.4f}  Acc: {train_acc:.3f}")
         print(f"  Train Loss: {train_loss:.4f}  Train Acc: {train_acc*100:.1f}%")
         print(f"  Val   Loss: {val_loss:.4f}  Val Acc  : {val_acc*100:.1f}%  AUC: {val_auc:.3f}")
         print(f"  {'✓ Good' if val_acc > 0.8 else '⚠ Still learning'}  |  Gap: {(train_acc - val_acc)*100:.1f}% {'(possible overfit)' if train_acc - val_acc > 0.1 else ''}")
@@ -244,16 +243,18 @@ def train(data_dir):
     model.load_state_dict(torch.load("cnn_model.pth"))
     _, _, _, y_true, y_prob = val_epoch(model, val_loader, criterion)
     y_pred = (np.array(y_prob) > 0.5).astype(int)
+    final_acc = (y_pred == np.array(y_true)).mean()
 
     print(classification_report(y_true, y_pred, target_names=classes))
     print(f"  ROC-AUC: {roc_auc_score(y_true, y_prob):.3f}")
 
-    # ── Comparison with baseline ──────────────────────────────────────────────
+    # ── Best model summary ────────────────────────────────────────────────────
     print("\n" + "="*50)
-    print("  MODEL COMPARISON")
+    print("  BEST MODEL (epoch {})".format(best_epoch))
     print("="*50)
-    print(f"  Random Forest (landmarks) : Acc 88%  AUC 0.937")
-    print(f"  ResNet-50 CNN (raw images): Acc {val_acc*100:.0f}%  AUC {best_auc:.3f}")
+    print(f"  ResNet-50 CNN (raw images): Acc {final_acc*100:.1f}%  AUC {best_auc:.3f}")
+    print("  Compare against the Random Forest / MLP baseline by running "
+          "train_model.py on the landmark features.")
     print("="*50)
 
     # ── Plots ─────────────────────────────────────────────────────────────────
