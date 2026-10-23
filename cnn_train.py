@@ -98,6 +98,14 @@ def load_datasets(data_dir):
     print(f"       Train images : {len(train_indices)}  Val images : {len(val_indices)}")
     print(f"       Val person IDs: {val_persons}")
 
+    if len(persons) == len(full_dataset.samples):
+        print("\n" + "!"*70)
+        print("  WARNING: every image became its own person, so this split keeps")
+        print("  nothing apart and the scores below are inflated by identity")
+        print("  leakage. Filenames must start with the person's digits, e.g.")
+        print("  007_smile.jpg, for the split to mean anything.")
+        print("!"*70)
+
     train_dataset = datasets.ImageFolder(data_dir, transform=train_transforms)
     val_dataset   = datasets.ImageFolder(data_dir, transform=val_transforms)
 

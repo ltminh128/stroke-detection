@@ -12,7 +12,7 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import cross_val_score, StratifiedGroupKFold
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
@@ -22,6 +22,14 @@ from sklearn.metrics import (classification_report, confusion_matrix,
 
 # ── Load & prepare data ───────────────────────────────────────────────────────
 
+def person_id(filename):
+    """Person ID = the digits before the first underscore (e.g. '007_smile.jpg').
+    Anything else is its own group, which groups nothing — load_data warns loudly
+    when that happens, because it silently reintroduces identity leakage."""
+    prefix = str(filename).split("_")[0]
+    return prefix if prefix.isdigit() else str(filename)
+
+
 def load_data(csv_path):
     df = pd.read_csv(csv_path)
 
@@ -29,26 +37,52 @@ def load_data(csv_path):
     feature_cols = [c for c in df.columns if c not in ["image", "label"]]
     X = df[feature_cols].values
     y = (df["label"] == "palsy").astype(int).values  # 1=palsy, 0=normal
+    groups = df["image"].map(person_id).values
 
     print(f"\n[INFO] Dataset: {len(df)} samples, {len(feature_cols)} features")
     print(f"       Normal: {(y==0).sum()}  |  Palsy: {(y==1).sum()}")
 
-    return X, y, feature_cols
+    n_groups = len(set(groups))
+    print(f"       Persons (groups): {n_groups}  "
+          f"({len(df)/n_groups:.1f} images per person on average)")
+
+    if n_groups == len(df):
+        print("\n" + "!"*70)
+        print("  WARNING: every image became its own group, so grouping does nothing")
+        print("  and the scores below are inflated by identity leakage. Filenames")
+        print("  must start with the person's digits, e.g. 007_smile.jpg, for the")
+        print("  split to keep one person out of both train and test.")
+        print("!"*70)
+
+    return X, y, feature_cols, groups
 
 
 # ── Train & evaluate ──────────────────────────────────────────────────────────
 
 def train(csv_path):
-    X, y, feature_cols = load_data(csv_path)
+    X, y, feature_cols, groups = load_data(csv_path)
 
-    # Split into train/test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y)
+    # Hold out whole people, not random images: with many photos per person a
+    # random split puts the same face in train and test, and the model scores
+    # well by recognising the individual rather than detecting droop.
+    splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    train_idx, test_idx = next(splitter.split(X, y, groups))
+
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    groups_train    = groups[train_idx]
+
+    print(f"\n[INFO] Person-based split: "
+          f"{len(set(groups_train))} train persons / "
+          f"{len(set(groups[test_idx]))} test persons  |  "
+          f"{len(train_idx)} train images / {len(test_idx)} test images")
 
     # Scale features
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test  = scaler.transform(X_test)
+
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
 
     # Model 1: Random Forest
     print("\n[1/2] Training Random Forest...")
@@ -59,7 +93,8 @@ def train(csv_path):
         n_jobs=-1
     )
     rf.fit(X_train, y_train)
-    rf_scores = cross_val_score(rf, X_train, y_train, cv=5, scoring="recall")
+    rf_scores = cross_val_score(rf, X_train, y_train, groups=groups_train,
+                                cv=cv, scoring="recall")
     print(f"      CV Recall: {rf_scores.mean():.3f} ± {rf_scores.std():.3f}")
 
     # Model 2: MLP Neural Network
@@ -78,12 +113,13 @@ def train(csv_path):
     )
     mlp_grid = GridSearchCV(
         mlp_base, mlp_params,
-        cv=5, scoring='recall',
+        cv=cv, scoring='recall',
         n_jobs=-1, verbose=1
     )
-    mlp_grid.fit(X_train, y_train)
+    mlp_grid.fit(X_train, y_train, groups=groups_train)
     mlp = mlp_grid.best_estimator_
-    mlp_scores = cross_val_score(mlp, X_train, y_train, cv=5, scoring='recall')
+    mlp_scores = cross_val_score(mlp, X_train, y_train, groups=groups_train,
+                                 cv=cv, scoring='recall')
 
     print(f"      Best params : {mlp_grid.best_params_}")
     print(f"      CV Recall   : {mlp_scores.mean():.3f} ± {mlp_scores.std():.3f}")

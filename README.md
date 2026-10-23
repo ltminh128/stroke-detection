@@ -33,17 +33,25 @@ originally used was removed from the pip package in mediapipe 0.10.31+.
   subject IDs as a leading number (e.g. `123_01.jpg`); verify this holds for
   your dataset before trusting the split
 ## Results
-- Accuracy: 94%
-- ROC-AUC: 0.965
-- Palsy Recall: 88%
+Earlier numbers (94% accuracy, 0.965 ROC-AUC, 88% palsy recall) were measured
+with a random image-level split. The dataset has many photos per person, so the
+same faces appeared in both train and test and those scores largely reflect the
+model recognising individuals rather than detecting droop. They are not valid
+and are kept here only as a record of what was superseded.
+
+Training now splits by person (`StratifiedGroupKFold` grouped on the person ID
+parsed from the filename), so no individual spans train and test. Re-run
+`train_model.py` to get trustworthy numbers.
 
 ## Model selection
-- MLP outperformed on a dataset of ~20,000 facial images
+- Trained on a dataset of ~20,000 facial images of roughly 10-20 individuals
 
 ## Limitations
 - Trained on facial palsy data, not direct stroke data
 - Screening tool only, not a medical diagnosis
 - Requires frontal face view
+- Few distinct individuals, so per-person generalisation is the binding
+  constraint — more people matters far more than more photos
 
 ## To-dos:
 - Find specific data for CNN (apply for MEEI datasets)
