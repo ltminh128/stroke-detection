@@ -1,6 +1,6 @@
 # Stroke Detection
 
-Detects facial drooping — a key sign of stroke — from a webcam feed, using
+Detects facial drooping, a key sign of stroke, from a webcam feed, using
 MediaPipe facial landmarks and a classical ML classifier.
 
 > **Status: research prototype, not validated.** The headline numbers this
@@ -15,7 +15,7 @@ MediaPipe facial landmarks and a classical ML classifier.
 There are **two separate models** in this repository. They are independent
 experiments and do not feed into each other.
 
-### 1. The landmark pipeline — this is what actually runs
+### 1. The landmark pipeline (this is what actually runs)
 
 ```
  photo / webcam frame
@@ -37,9 +37,9 @@ experiments and do not feed into each other.
 
 Note the only convolutional network involved is MediaPipe's landmarker, which is
 a fixed, pretrained feature extractor. The trained classifier is a Random Forest
-or a small fully-connected MLP — **not** a CNN.
+or a small fully-connected MLP, **not** a CNN.
 
-### 2. The CNN experiment — currently disconnected
+### 2. The CNN experiment (currently disconnected)
 
 `cnn_train.py` fine-tunes a ResNet-50 on raw images and writes `cnn_model.pth`.
 **Nothing else in the repo loads that file.** It is a parallel alternative
@@ -85,7 +85,7 @@ data/
 ```
 
 **Filenames must begin with the person's ID followed by an underscore.** This is
-not cosmetic — it is how the training scripts keep one person out of both train
+not cosmetic. It is how the training scripts keep one person out of both train
 and test. `train_model.py` parses the digits before the first underscore as the
 person ID and prints what it found:
 
@@ -120,7 +120,7 @@ train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 ```
 
 With many photos per person, the same individual appears in **both** train and
-test. The model never has to learn what facial droop looks like — it can learn
+test. The model never has to learn what facial droop looks like. It can learn
 "this is person #7, and person #7 is labelled palsy", then recognise person #7
 at test time and be scored correct. This is **identity leakage**.
 
@@ -141,9 +141,10 @@ broken split** and should be disregarded.
 
 `train_model.py` now groups every row by person and splits with
 `StratifiedGroupKFold`, so no individual spans train and test. Critically, the
-5-fold cross-validation is grouped the same way — that CV selects the best model
-and tunes the MLP via `GridSearchCV`, so leaking there picks the wrong model, not
-just an optimistic number. Both scripts now warn loudly when grouping degenerates.
+5-fold cross-validation is grouped the same way, because that CV selects the
+best model and tunes the MLP via `GridSearchCV`, so leaking there picks the
+wrong model, not just an optimistic number. Both scripts now warn loudly when
+grouping degenerates.
 
 **Expect honest numbers to be substantially lower than 94%.** That is not a
 regression; it is the first measurement of the right quantity.
@@ -156,7 +157,7 @@ CNN result, weigh all of these:
 
 1. **Raw pixels make identity trivial to memorise.** The landmark model sees 10
    geometric numbers, which can barely encode *who* someone is. A ResNet sees
-   skin texture, hair, glasses, lighting and background — identity is the
+   skin texture, hair, glasses, lighting and background. Identity is the
    easiest signal in the image, and gradient descent takes the easiest route.
 
 2. **~15.5M trainable parameters against ~16 training individuals.** Unfreezing
@@ -203,7 +204,7 @@ Ranked by expected impact:
 4. **Prefer the landmark model over the CNN** at this data scale. Hand-built
    geometric features are a strong regulariser precisely because they discard
    identity.
-5. **If using the CNN, freeze more of it** — train only the head, or a much
+5. **If using the CNN, freeze more of it**: train only the head, or a much
    smaller backbone.
 
 ---
@@ -231,7 +232,7 @@ test, since that is what determines whether they mean anything.
 ## Limitations
 
 - Trained on facial palsy data, not on stroke patients
-- Screening aid only — **not a medical diagnosis**, and not validated clinically
+- Screening aid only. **Not a medical diagnosis**, and not validated clinically
 - Requires a reasonably frontal, well-lit face
 - Very few distinct individuals, so per-person generalisation is the binding
   constraint on every result in this repo
