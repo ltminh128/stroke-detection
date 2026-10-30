@@ -24,7 +24,7 @@ from sklearn.metrics import (classification_report, confusion_matrix,
 
 def person_id(filename):
     """Person ID = the digits before the first underscore (e.g. '007_smile.jpg').
-    Anything else is its own group, which groups nothing — load_data warns loudly
+    Anything else is its own group, which groups nothing. load_data warns loudly
     when that happens, because it silently reintroduces identity leakage."""
     prefix = str(filename).split("_")[0]
     return prefix if prefix.isdigit() else str(filename)
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train stroke detection classifier")
     parser.add_argument("--data", default="landmarks_face_only.csv",
                         help="Path to landmarks CSV (face-only features, matching "
-                             "webcam_demo.py's inputs — run fix_data.py on "
+                             "webcam_demo.py's inputs; run fix_data.py on "
                              "landmarks.csv first if you haven't already)")
     args = parser.parse_args()
     train(args.data)

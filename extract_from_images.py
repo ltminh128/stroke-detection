@@ -66,7 +66,7 @@ def process_folder(data_dir: str, output_csv: str):
 
             face_result = face_landmarker.detect(mp_img)
             if not face_result.face_landmarks:
-                # No face detected — skip this image
+                # No face detected, skip this image
                 skipped += 1
                 continue
 

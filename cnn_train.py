@@ -42,7 +42,7 @@ NUM_CLASSES = 2
 
 print(f"[INFO] Using device: {DEVICE}")
 if DEVICE.type == "cpu":
-    print("[INFO] No GPU found — training on CPU (will be slower but works fine)")
+    print("[INFO] No GPU found, training on CPU (will be slower but works fine)")
 
 
 # ── Data transforms ───────────────────────────────────────────────────────────
